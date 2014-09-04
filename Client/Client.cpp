@@ -1,4 +1,4 @@
-#include "client.h"
+#include "Client.h"
 
 int setupConnection(in_port_t serverPort, char* serverIP){
 	
