@@ -1,10 +1,11 @@
 #include "Client.h"
 
+
 int main(int argc, char **argv){
 
 	// checking the validity of args
 	if (argc < 2 || argc > 3){
-		printf("<Server Address> <Server Port>");
+		cout << "<Server Address> <Server Port>";
 		return -1;
 	}
 
@@ -13,28 +14,36 @@ int main(int argc, char **argv){
 	in_port_t serverPort = (argc==3) ? atoi(argv[2]) : 1893;
 
 	// getting nickname from user
-	char username[MAX_USERNAME_LENGTH], *temp;
-	printf("Enter your name: ");
-	scanf("%[^\n]%c", username, temp);
+	cout << "Enter your name: ";
+	getline(std::cin, myname);
 
 	// get the socket descriptor for dealing with the connection
-	int sd = setupConnection(serverPort, serverIP);
-	if (sd==-1)
-		exit(-1);
+	socketDescriptor = setupConnection(serverPort, serverIP);
+	if (socketDescriptor==-1)
+		return -1;
 
-	sendMessage(sd, username);						// send username to server
+	sendMessage(socketDescriptor, ("QUERY:"+myname).c_str());		// send username to server in format QUERY:username
 
-	char buffer[MAX_BUF_SIZE];
-	receiveMessage(sd, buffer, MAX_BUF_SIZE);		// Receive list of online clients from server
+	receiveMessage(socketDescriptor, buffer, MAX_BUF_SIZE);			// Receive list of online clients from server
 	
-	char *usersList[MAX_USERS];
-	splitString(buffer, ' ', usersList);
+	splitCharStream(strdup(buffer), DELIM, -1, &usersList);			// Display list of users
+	displayOnlineUsers(&usersList);
 
-	printf("Following users are available now:\n");
-	for (int i=0; usersList[i]!='\0'; ++i)
-		printf("%s\n", usersList[i]);
-
-
+	// giving instructions to user
+	cout << "To send a message to other users, enter the message in this format => username:message" << endl;
+	cout << "To query online users, enter who." << endl;
+	cout << "Enjoy Chatting." << endl;
+	
+	// starting two threads
+	pthread_t threads[2];
+	int rc1 = pthread_create(&threads[0], NULL, Sender, (void *)1);
+	int rc2 = pthread_create(&threads[1], NULL, Receiver, (void *)2);
+	
+	if(rc1 || rc2)
+		cout << "Error: Unable to create thread";
+	
 	close(sd);
+	pthread_exit(NULL);
+
 	return 0;
 }
