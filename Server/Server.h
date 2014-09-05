@@ -14,6 +14,9 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+
+extern int SERVER_SOCKET;
+
 /* Codes */
 #define SOCKET_OK 200					/* All OK */
 

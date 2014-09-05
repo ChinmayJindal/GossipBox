@@ -1,6 +1,8 @@
 #include "Server.h"
 
 /* Global variable definitions, declared in "Server.h" */
+int SERVER_SOCKET;
+
 int ERROR;
 std::string error_message;
 
@@ -71,7 +73,8 @@ void startServer(int port){
 	FD_SET(socketDescriptor, &master);
 	maxsd = socketDescriptor;
 
-	std::cout<<"Server is ready for operations.\n";
+	SERVER_SOCKET = socketDescriptor;
+	std::cout<<"Server is ready for operations...\n";
 	/* Main server loop */
 	while(true){
 		memcpy(&read_sds, &master, sizeof(fd_set));	/* Make a temporary copy */
