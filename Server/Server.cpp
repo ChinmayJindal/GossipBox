@@ -190,14 +190,14 @@ int sendMessage(std::string toUser, std::string fromUser, std::string message){
 	}
 
 	message = "RECV:"+fromUser+":"+message;
-	unsigned int sbytes = send(sd, message.c_str(), message.length(), 0);
+	int sbytes = send(sd, message.c_str(), message.length(), 0);
 	if(sbytes<0){
 		ERROR = E_SEND;
 		error_message = toUser+":Error sending message.";
 		close(sd);
 		return -1;
 	}
-	else if(sbytes!=message.length()){
+	else if(sbytes!=(int)message.length()){
 		ERROR = E_PART;
 		error_message = toUser+":Partial message sent.";
 		close(sd);
