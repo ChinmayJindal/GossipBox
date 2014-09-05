@@ -26,6 +26,9 @@
 #define E_HUNG 506						/* Error connection closed */
 #define E_SEND 507						/* Error in sending message */
 #define E_IPADDR 508					/* Error retreiving IP address */
+#define E_OFFLINE 509					/* Error if client offline */
+#define E_CONN 510 						/* Error if connect failed */
+#define E_PART 511 						/* Error if partial message sent */
 
 #define TYPE_QUERY 100
 #define TYPE_SEND 101
@@ -62,6 +65,9 @@ int acceptConnection(int);
 /* Receive data, set error flags (if any) */		
 int receiveData(int, char*);
 
+/* Send message to the user */
+int sendMessage(std::string, std::string, std::string);
+
 /* Process request */
 void processRequest(int, char*);
 
@@ -79,4 +85,4 @@ iportPair getFromNameTable(std::string);
 std::string getOnlineList(std::string);
 bool isOnline(std::string);
 
-#endif		//_SERVER_H_
+#endif		/*_SERVER_H_*/

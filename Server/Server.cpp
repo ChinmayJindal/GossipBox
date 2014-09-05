@@ -96,10 +96,12 @@ void startServer(int port){
 				else{														/* Handle data from client */
 					int nbytes = receiveData(sock, buffer);
 					if(nbytes==-1){
+						socketTable.erase(socketTable.find(sock));
 						close(sock);
 						FD_CLR(sock, &master);								/* Update the master socket descriptor set */
+					}else{
+						processRequest(sock, buffer);
 					}
-					processRequest(sock, buffer);
 				}
 			}
 		}
@@ -153,6 +155,59 @@ int receiveData(int socketDescriptor,char* buffer){
 	return nbytes;
 }
 
+int sendMessage(std::string toUser, std::string fromUser, std::string message){
+	iportPair info = getFromNameTable(toUser);
+	if(info.second==-1){
+		ERROR = E_OFFLINE;
+		error_message = toUser + ":Not online.";
+		return -1;
+	}
+	
+	int sd = socket(AF_INET, SOCK_STREAM, 0);
+	if(sd<0){
+		ERROR = E_DESCRIPTOR;
+		error_message = toUser+":Error creating socket.";
+		return -1;
+	}
+	struct sockaddr_in hostAddr;
+	memset(&hostAddr, 0, sizeof(hostAddr));
+	hostAddr.sin_family = AF_INET;
+	int ipadd = inet_pton(AF_INET, info.first.c_str(), &hostAddr.sin_addr.s_addr);
+	if(ipadd<0){
+		ERROR = E_IPADDR;
+		error_message = toUser+":Unable to translate IP address.";
+		close(sd);
+		return -1;
+	}
+	hostAddr.sin_port = htons(info.second);
+
+	int conn = connect(sd, (struct sockaddr *)&hostAddr, sizeof(hostAddr));
+	if(conn<0){
+		ERROR = E_CONN;
+		error_message = toUser+":Unable to translate IP address.";
+		close(sd);
+		return -1;
+	}
+
+	message = "RECV:"+fromUser+":"+message;
+	unsigned int sbytes = send(sd, message.c_str(), message.length(), 0);
+	if(sbytes<0){
+		ERROR = E_SEND;
+		error_message = toUser+":Error sending message.";
+		close(sd);
+		return -1;
+	}
+	else if(sbytes!=message.length()){
+		ERROR = E_PART;
+		error_message = toUser+":Partial message sent.";
+		close(sd);
+		return -1;
+	}
+
+	close(sd);
+	return (int)sbytes;
+}
+
 /*
  * Parse incoming data
  * Types of messages and their responses are:
@@ -190,12 +245,25 @@ void processRequest(int fromSocket, char* stream){
 		int s = send(fromSocket, onlineList.c_str(), onlineList.length(), 0);
 		if(s<0){
 			ERROR = E_SEND;
-			error_message = "Unable to send message.";
+			error_message = "Unable to send query reply.";
 		}
 	}
 	else if(TYPE_FLAG == TYPE_SEND){
 		toUser = tokens[1];
 		message = tokens[2];
+
+		/* Send message to desired target username */
+		int status = sendMessage(toUser, fromUser, message);
+		std::string reply = "SENT: "+toUser+" : ";
+		if(status==-1){
+			reply += error_message;
+		}
+		/* Report back to the sender */
+		int s = send(fromSocket, reply.c_str(), reply.length(), 0);
+		if(s<0){
+			ERROR = E_SEND;
+			error_message = "Unable to send message status.";
+		}
 	}
 }
 
@@ -290,6 +358,9 @@ std::string getOnlineList(std::string curUser){
 				response += it->first;
 				response += ":";
 			}
+			else{
+				nameTable.erase(nameTable.find(it->first));					/* Erase from table if no more accepting */
+			}
 		}
 		++it;
 	}
@@ -297,8 +368,8 @@ std::string getOnlineList(std::string curUser){
 }
 
 bool isOnline(std::string user){
-	iportPair info = getFromNameTable(user);
-	if(info.second==-1)
+	iportPair info = getFromNameTable(user);									/* Check if user exists in table */
+	if(info.second==-1)															/* WARNING: Redundant check */
 		return false;
 
 	int sd = socket(AF_INET, SOCK_STREAM, 0);
