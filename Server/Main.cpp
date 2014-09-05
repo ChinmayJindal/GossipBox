@@ -21,12 +21,13 @@ int ATOI(char *num){
 }
 
 int main(int argc, char* argv[]){
-	int port = -1;
+	int port = PORT_DEFAULT;
 	if (argc<2){
-		std::cout<<"WARNING: No port specified, selecting random port.\n";
+		std::cout<<"WARNING: No port specified, selecting default port: "<<PORT_DEFAULT<<"\n";
 	}else{
 		port = ATOI(argv[1]);
 	}
+
 	startServer(port);
 
 	return 0;
