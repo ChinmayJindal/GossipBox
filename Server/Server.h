@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <fcntl.h>
 
 extern int SERVER_SOCKET;
 
@@ -33,8 +34,8 @@ extern int SERVER_SOCKET;
 #define E_CONN 510 						/* Error if connect failed */
 #define E_PART 511 						/* Error if partial message sent */
 
-#define TYPE_QUERY 100
-#define TYPE_SEND 101
+#define TYPE_QUERY 100 					/* Define Type of message, querying */
+#define TYPE_SEND 101					/* Define Type of message, sending */
 
 /* Required parameters */
 #define PORT_DEFAULT 1893				/* Select default port */
@@ -45,13 +46,9 @@ extern int SERVER_SOCKET;
 extern int ERROR;						/* Error flags set here */
 extern std::string error_message;		/* Error message set here */
 
-/* Tables to manage client info */
-typedef std::pair<std::string,int> iportPair;					/* This contains IP address, Port pair */
-typedef std::map<int, iportPair> SocketTable;
-typedef std::map<std::string, iportPair> NameTable;
+typedef std::map<std::string, int> Connections;	/* Manage connections here*/
 
-extern SocketTable socketTable;					/* Table with key as socket descriptor */
-extern NameTable nameTable;						/* Table with key as username of client */
+extern Connections conn;						/* Table of username versus open socket */
 
 /* 
  * Returns socket descriptor on success, else -1 and sets error flag	
@@ -79,10 +76,8 @@ void splitCharStream(char*, const char*, int, std::vector<std::string>*);
 void trim(std::string&, const char);
 
 /* Function for table entries, queries */
-void addToSocketTable(int, std::string, int);
-void addToNameTable(std::string, std::string, int);
-iportPair getFromSocketTable(int);
-iportPair getFromNameTable(std::string);
+void addToConnectionTable(std::string, int);
+int getFromConnectionTable(std::string);
 
 /* Get latest online nicknames */
 std::string getOnlineList(std::string);
