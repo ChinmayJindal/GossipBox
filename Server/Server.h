@@ -36,9 +36,10 @@ extern int SERVER_SOCKET;
 
 #define TYPE_QUERY 100 					/* Define Type of message, querying */
 #define TYPE_SEND 101					/* Define Type of message, sending */
+#define TYPE_PING 102					/* Define Type of message, ping */
 
 /* Required parameters */
-#define PORT_DEFAULT 1893				/* Select default port */
+#define PORT_DEFAULT 8080				/* Select default port */
 #define MAX_PENDING 10					/* Maximum pending Requests */
 #define MAX_BUFFER 1000					/* Maximum buffer size for data */
 #define DELIM ":"						/* Delimiter for queries from client */
@@ -78,6 +79,7 @@ void trim(std::string&, const char);
 /* Function for table entries, queries */
 void addToConnectionTable(std::string, int);
 int getFromConnectionTable(std::string);
+void removeFromConnectionTable(int);
 
 /* Get latest online nicknames */
 std::string getOnlineList(std::string);
