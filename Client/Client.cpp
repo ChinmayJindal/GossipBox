@@ -47,6 +47,7 @@ int setupConnection(in_port_t serverPort, char* serverIP){
 	return sd;
 }
 
+// thread which sends user requests to server in a special packaged format
 void *Sender(void *threadargs){
 	while(1)
 	{
@@ -55,13 +56,16 @@ void *Sender(void *threadargs){
 		if (cmdInput=="who")			// if user demands a list of online clients
 			sendMessage(socketDescriptor, ("QUERY:"+myname).c_str());
 		else if(cmdInput=="exit"){
-			std::cout << "Application is exiting..!!\n";
+			std::cout << "You are going offline..!!\n";
+			close(socketDescriptor);
 			exit(0);
 		}
+		else if(cmdInput=="help")
+			giveInstructions();
 		else{
 			splitCharStream(strdup(cmdInput.c_str()), DELIM, 1, &cmdTokens);
 			if (cmdTokens.size()==2)
-				sendMessage(socketDescriptor, ("SEND:"+cmdTokens[0]+":"+cmdTokens[1]).c_str());
+				sendMessage(socketDescriptor, ("SEND:"+myname+":"+cmdTokens[0]+":"+cmdTokens[1]).c_str());
 			else
 				std::cout << "Invalid Input!! Please Re-Enter." << std::endl;
 		}
@@ -69,20 +73,27 @@ void *Sender(void *threadargs){
 	pthread_exit(NULL);
 }
 
+// thread which receives and processes data
 void *Receiver(void *threadargs){
 	while(1){
-
-		receiveMessage(socketDescriptor, buffer);			// Receive list of online clients from server
-		if (strlen(buffer) > 0){	// if something received from server
+		memset(buffer, 0, MAX_BUF_SIZE);
+		while(receiveMessage(socketDescriptor, buffer)<=0);			// Receive list of online clients from server
+		if (strlen(buffer) > 0){									// if something received from server
 			splitCharStream(strdup(buffer), DELIM, 2, &bufferTokens);
 			if (bufferTokens[0]=="RECV")								// another client sent the message to client
-				std::cout << bufferTokens[1] << "said: " << bufferTokens[2] << std::endl;
+				std::cout << "\"" <<bufferTokens[1] << "\" says : " << bufferTokens[2] << std::endl;
 			else if(bufferTokens[0]=="ONLINE"){							// list of online clients received from server
 				splitCharStream(buffer, DELIM, -1, &usersList);
 				displayOnlineUsers(usersList);
 			}
 			else if(bufferTokens[0]=="SENT")							// request status received from server
-				std::cout << "Message sending to " << bufferTokens[1] << ": " << bufferTokens[2] << std::endl;
+				if(bufferTokens[2] == SUCCESS)
+					std::cout << "Message to "<<bufferTokens[1] << "successfully sent\n";
+				else if(bufferTokens[2] == OFFLINE)
+					std::cout << "Message to "<<bufferTokens[1] << " not sent (User Offline)\n";
+				else if(bufferTokens[2] == SEND_ERR)
+					std::cout << "Message to "<<bufferTokens[1] << " failed\n";
+				std::cout << bufferTokens[2] << std::endl;
 		}
 	}
 	pthread_exit(NULL);
@@ -93,32 +104,31 @@ int sendMessage(int sockfd, const char* data){
 	int sentLen = send(sockfd, data, strlen(data) ,0);
 
 	if (sentLen < 0){
-		std::cout << "Name sending failed !!\n";
+		std::cout << "Sending to server failed !!\n";
 		return -1;
 	}
 	else if(sentLen != strlen(data)){
 		std::cout << "send(): sent unexpected number of bytes\n";
 		return 0;
 	}
-	
+
+	#ifdef __DEBUG__
 	std::cout << sentLen << " characters Successfully sent\n";
+	#endif
 	return sentLen;
 }
 
 
 int receiveMessage(int sockfd, char* buffer){
-
 	int recvLen = recv(sockfd, buffer, MAX_BUF_SIZE-1, 0);
 	if (recvLen < 0){
-		std::cout << "Receive Failed !!" << std::endl;
 		return -1;
 	}
 	return recvLen;
 }
 
-/*
- * Split routine, 'count' defines the number of delimiters to check
- */
+
+// Split routine, 'count' defines the number of delimiters to check
 void splitCharStream(char* stream, const char* delim, int count, std::vector<std::string>* result){
 	(*result).clear();													/* Clear the result vector */
 
@@ -145,9 +155,8 @@ void splitCharStream(char* stream, const char* delim, int count, std::vector<std
 	}
 }
 
-/* 
- * Trim leading and trailing unwanted char (tchar)
- */
+ 
+// Trim leading and trailing unwanted char (tchar)
 void trim(std::string& s, const char tchar){
 	int i=0;
 	while(s[i]==tchar)
@@ -159,13 +168,21 @@ void trim(std::string& s, const char tchar){
 	s = s.substr(0, i+1);
 }
 
-
+// display list of all the online users
 void displayOnlineUsers(std::vector<std::string> &usersList){
-	if (usersList.size()==1)
-		std::cout << "No one is online..!!\n";
+	unsigned int numUsers = usersList.size()-1;
+	if (numUsers==0)
+		std::cout << "\nNo one is online..!!";
 	else{
-		std::cout << "Following users are available now:\n";
-		for (unsigned int i=1; i<usersList.size(); ++i)
+		std::cout << "\nCurrently following " << numUsers << " users are available:";
+		for (unsigned int i=1; i<numUsers; ++i)
 			std::cout << usersList[i] << std::endl;
 	}
+}
+
+// prints the instruction set for the user
+void giveInstructions(){
+	std::cout << "To send a message, use this format => username:message" << std::endl;
+	std::cout << "To query online users, enter who." << std::endl;
+	std::cout << "Enjoy Chatting." << std::endl;	
 }

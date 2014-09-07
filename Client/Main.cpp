@@ -21,27 +21,34 @@ int main(int argc, char **argv){
 	if (socketDescriptor==-1)
 		return -1;
 	else
+		#ifdef __DEBUG__
 		std::cout << "Connection to server established.\n";
-
+		#endif
 
 	sleep(1);
 	sendMessage(socketDescriptor, ("QUERY:"+myname).c_str());		// send username to server in format QUERY:username
 
-	while(receiveMessage(socketDescriptor, buffer) <= 0);			// Receive list of online clients from server
-	
+	#ifdef __DEBUG__
+	std::cout << "Registered name on server.\n";
+	#endif
+
+	while(receiveMessage(socketDescriptor, buffer) <= 0);			// Receive list of online clients from server	
+
+	#ifdef __DEBUG__
+	std::cout << "Received list of online clients from server\n";
+	#endif
+
 	splitCharStream(strdup(buffer), DELIM, -1, &usersList);			// Display list of users
 	displayOnlineUsers(usersList);
 
 	sleep(2);
 
 	// giving instructions to user
-	std::cout << "To send a message to other users, enter the message in this format => username:message" << std::endl;
-	std::cout << "To query online users, enter who." << std::endl;
-	std::cout << "Enjoy Chatting." << std::endl;
-	
+	std::cout << "Type 'help' for instructions\n";
 
-	std::cin >> cmdInput;
-	
+	#ifdef __DEBUG__
+	std::cout << "Creating the threads\n";
+	#endif
 
 	pthread_t threads[2];	
 	
@@ -52,7 +59,6 @@ int main(int argc, char **argv){
 	if(rc1 || rc2)
 		std::cout << "Error: Unable to create thread\n";
 	
-	close(socketDescriptor);
 	pthread_exit(NULL);
 	
 	return 0;
