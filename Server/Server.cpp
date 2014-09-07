@@ -98,6 +98,7 @@ void startServer(int port){
 				else{														/* Handle data from client */
 					int nbytes = receiveData(sock, buffer);
 					if(nbytes==-1){
+						removeFromConnectionTable(sock);
 						close(sock);
 						FD_CLR(sock, &master);								/* Update the master socket descriptor set */
 					}else{
@@ -121,7 +122,7 @@ int acceptConnection(int serverSocket){
 		error_message = "Failed connection accept.";
 		return -1;
 	}
-	/*
+	
 	char remoteIP[INET_ADDRSTRLEN];
 	if(inet_ntop(AF_INET, &remoteAddr.sin_addr.s_addr, remoteIP, sizeof(remoteIP)) == NULL){
 		ERROR = E_IPADDR;
@@ -129,7 +130,7 @@ int acceptConnection(int serverSocket){
 		return -1;
 	}
 	int remotePort = ntohs(remoteAddr.sin_port);
-	*/
+	std::cout<<"Connection accepted from: "<<remoteIP<<" : "<<remotePort<<std::endl;
 
 	return newSd;
 }
@@ -156,14 +157,13 @@ int receiveData(int socketDescriptor,char* buffer){
 		std::cout<<nbytes<<std::endl;
 	}
 	*/
-	std::cout<<"Received: "<<buffer<<std::endl;
 	return nbytes;
 }
 
 int sendMessage(std::string toUser, std::string fromUser, std::string message){
 	if(isOnline(toUser)){
 		ERROR = E_OFFLINE;
-		error_message = toUser+" is not online.";
+		error_message = toUser+": User is not online.";
 		return -1;
 	}
 	int targetSocket = getFromConnectionTable(toUser);
@@ -186,7 +186,9 @@ int sendMessage(std::string toUser, std::string fromUser, std::string message){
  *						Response --> ONLINE: <user1> : <user2> : <user3> : ....
  *					SEND: <from> : <to> : <message>
  *						Response --> SENT: <to> : <statusMessage>
- *					RECV: <from> : <message>
+ *					
+ *					/toclient/ RECV: <from> : <message>
+ *					PING: <from>
  */
 void processRequest(int fromSocket, char* stream){
 	std::vector<std::string> tokens;
@@ -196,8 +198,23 @@ void processRequest(int fromSocket, char* stream){
 	delete dump;
 
 	std::string reqType = tokens[0];
-	int TYPE_FLAG = (reqType=="QUERY")? TYPE_QUERY : TYPE_SEND;
-	int delimCount = (TYPE_FLAG==TYPE_QUERY)? 0 : 2;
+
+	int TYPE_FLAG = -1, delimCount=-1;
+	if(reqType=="QUERY"){
+		TYPE_FLAG = TYPE_QUERY;
+		delimCount = 0;
+	}
+	else if(reqType=="SEND"){
+		TYPE_FLAG = TYPE_SEND;
+		delimCount = 2;
+	}
+	else if(reqType=="PING"){
+		TYPE_FLAG = TYPE_PING;
+		delimCount = -1;
+	}
+
+	if(TYPE_FLAG==-1)
+		return;
 
 	splitCharStream(strdup(tokens[1].c_str()), DELIM, delimCount, &tokens);		/* Based on kind retrieve other param list */
 	
@@ -206,10 +223,10 @@ void processRequest(int fromSocket, char* stream){
 
 	if(TYPE_FLAG == TYPE_QUERY){
 		addToConnectionTable(fromUser, fromSocket);								/* Add user socket pair to table */
-		std::cout<<"Data received: "<<stream<<std::endl;
-		std::cout<<"Request from user: "<<fromUser<<std::endl;
+		
+		std::cout<<fromUser<<" queried."<<std::endl;
+
 		std::string onlineList = getOnlineList(fromUser);
-		std::cout << onlineList << std::endl;
 		int s = send(fromSocket, onlineList.c_str(), onlineList.length(), 0);
 		if(s<0){
 			ERROR = E_SEND;
@@ -254,7 +271,8 @@ void splitCharStream(char* stream, const char* delim, int count, std::vector<std
 
 		subToken = std::string(token);
 		trim(subToken, ' ');											/* Trim leading and trailing spaces */
-		(*result).push_back(subToken);									/* Push into results */
+		if(subToken.length()>0)
+			(*result).push_back(subToken);								/* Push into results */
 
 		if(limitDelim && count<=0)										/* Get all of next of count exhausted */
 			token = strtok(NULL, "");
@@ -285,6 +303,20 @@ void addToConnectionTable(std::string username, int socketDescriptor){
 	}
 }
 
+void removeFromConnectionTable(int socketDescriptor){
+	/* Remove the user with the closed socket */
+	Connections::iterator it = conn.begin();
+	while(it!=conn.end()){
+		if(it->second == socketDescriptor){
+			std::cout<<it->first<<" went offline."<<std::endl;
+			conn.erase(it);
+			break;
+		}
+		++it;
+	}
+}
+
+/* Get socket descriptor of the username */
 int getFromConnectionTable(std::string username){
 	Connections::iterator it = conn.find(username);
 	if(it == conn.end())
@@ -292,13 +324,14 @@ int getFromConnectionTable(std::string username){
 	return it->second;
 }
 
-/* Returns list of online nicknames as
- * ONLINE: <user1> : <user2> : etc.
+/* 
+ * Returns list of online nicknames as
+ * ONLINE: <user1> : <user2> : ...
  */
 std::string getOnlineList(std::string curUser){
 	std::string response = "ONLINE: ";
 	Connections::iterator it = conn.begin();
-	std::vector<std::string> cutOff;
+
 	while(it!=conn.end()){
 		if(it->first!=curUser){
 			bool online = isOnline(it->first);
@@ -306,17 +339,10 @@ std::string getOnlineList(std::string curUser){
 				response += it->first;
 				response += ":";
 			}
-			else{
-				cutOff.push_back(it->first);
-			}
 		}
 		++it;
 	}
-	if(cutOff.size()>0){
-		for(int i=0;i<cutOff.size();++i){
-			conn.erase(conn.find(cutOff[i]));
-		}
-	}
+
 	return response;
 }
 
@@ -324,10 +350,12 @@ bool isOnline(std::string user){
 	int userSocket = getFromConnectionTable(user);
 	if(userSocket==-1)
 		return false;
+	/*
 	std::string ping = "PING";
 	int bytes = send(userSocket, ping.c_str(), ping.length(),0);
 	if(bytes<0){
 		return false;
 	}
+	*/
 	return true;
 }
