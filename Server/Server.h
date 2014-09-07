@@ -38,8 +38,9 @@ extern int SERVER_SOCKET;
 #define E_CONN 510 						/* Error if connect failed */
 #define E_PART 511 						/* Error if partial message sent */
 
-#define TYPE_QUERY 100 					/* Define Type of message, querying */
-#define TYPE_SEND 101					/* Define Type of message, sending */
+#define TYPE_NEW 100 					/* Define Type of message, register new user */
+#define TYPE_QUERY 101 					/* Define Type of message, querying */
+#define TYPE_SEND 102					/* Define Type of message, sending */
 
 /* Required parameters */
 #define PORT_DEFAULT 8080				/* Select default port */
