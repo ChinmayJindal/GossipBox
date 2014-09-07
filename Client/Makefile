@@ -1,18 +1,19 @@
 TARGET=Client
 CC=g++
 CFLAGS=-Wall
+THREAD=-lpthread
 
 .PHONY : clean
 
 $(TARGET): Main.o Client.o
-	@$(CC) $(CFLAGS) -o $@ $^
+	@$(CC) $(CFLAGS) -o $@ $^ $(THREAD)
 	@echo "Use 'make run' to execute"
 
 Main.o: Main.cpp Client.h
-	@$(CC) $(CFLAGS) -c Main.cpp
+	@$(CC) $(CFLAGS) $(THREAD) -c Main.cpp
 
 Client.o: Client.cpp Client.h
-	@$(CC) $(CFLAGS) -c Client.cpp
+	@$(CC) $(CFLAGS) $(THREAD) -c Client.cpp
 
 run: $(TARGET)
 	@./$(TARGET)
