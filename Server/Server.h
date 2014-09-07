@@ -41,6 +41,7 @@ extern int SERVER_SOCKET;
 #define TYPE_NEW 100 					/* Define Type of message, register new user */
 #define TYPE_QUERY 101 					/* Define Type of message, querying */
 #define TYPE_SEND 102					/* Define Type of message, sending */
+#define TYPE_BCAST 103					/* Define Type of message, broadcast to all online */
 
 /* Required parameters */
 #define PORT_DEFAULT 8080				/* Select default port */

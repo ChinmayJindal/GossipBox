@@ -87,6 +87,7 @@ void startServer(int port){
 
 	/* Add current socket to master set */
 	FD_SET(socketDescriptor, &master);
+	addToConnectionTable("broadcast",-1);			/* Broadcast dummy user, to broadcast message */
 	maxsd = socketDescriptor;
 
 	SERVER_SOCKET = socketDescriptor;
@@ -236,6 +237,7 @@ int sendMessage(std::string toUser, std::string fromUser, std::string message){
  *						Response --> ONLINE: <user1> : <user2> : <user3> : ....
  *					SEND: <from> : <to> : <message>
  *						Response --> SENT: <to> : <statusMessage>
+ *					BCAST: <from> : <message>
  *					
  *					/toclient/ RECV: <from> : <message>
  */
@@ -260,6 +262,10 @@ void processRequest(int fromSocket, char* stream){
 	else if(reqType=="SEND"){
 		TYPE_FLAG = TYPE_SEND;
 		delimCount = 2;
+	}
+	else if(reqType=="BCAST"){
+		TYPE_FLAG = TYPE_BCAST;
+		delimCount = 1;
 	}
 
 	if(TYPE_FLAG==-1)
@@ -342,6 +348,34 @@ void processRequest(int fromSocket, char* stream){
 			#endif
 		}
 		/* Report back to the sender */
+		int s = send(fromSocket, reply.c_str(), reply.length(), 0);
+		if(s<0){
+			ERROR = E_SEND;
+			error_message = "Unable to send message status.";
+
+			#ifdef __DEBUG__
+			std::cout<<error_message<<std::endl;
+			#endif
+		}
+	}
+	else if(TYPE_FLAG == TYPE_BCAST){
+		message = tokens[1];
+
+		std::string bcast = "RECV:"+fromUser+":"+message;
+		#ifdef __INFO__
+		std::cout<<"Broadcast from \""+fromUser+"\" : "<<bcast<<std::endl;
+		#endif
+
+		int status;
+		Connections::iterator it = conn.begin();
+		while(it!=conn.end()){
+			if(it->first != fromUser){
+				status = send(it->second, bcast.c_str(), bcast.length(), 0 );
+			}
+			++it;
+		}
+		std::string reply = "b_success";
+		/* Report back to the broadcaster */
 		int s = send(fromSocket, reply.c_str(), reply.length(), 0);
 		if(s<0){
 			ERROR = E_SEND;
