@@ -230,6 +230,8 @@ int sendMessage(std::string toUser, std::string fromUser, std::string message){
 /*
  * Parse incoming data
  * Types of messages and their responses are:
+ *					NEW: <from>
+ *						Response --> NEW: <status>
  * 					QUERY: <from>
  *						Response --> ONLINE: <user1> : <user2> : <user3> : ....
  *					SEND: <from> : <to> : <message>
@@ -247,7 +249,11 @@ void processRequest(int fromSocket, char* stream){
 	std::string reqType = tokens[0];
 
 	int TYPE_FLAG = -1, delimCount=-1;
-	if(reqType=="QUERY"){
+	if(reqType=="NEW"){
+		TYPE_FLAG = TYPE_NEW;
+		delimCount = 0;
+	}
+	else if(reqType=="QUERY"){
 		TYPE_FLAG = TYPE_QUERY;
 		delimCount = 0;
 	}
@@ -258,20 +264,47 @@ void processRequest(int fromSocket, char* stream){
 
 	if(TYPE_FLAG==-1)
 		return;
+	
+	#ifdef __DEBUG__
+	std::cout<<TYPE_FLAG<<" --- ";
+	#endif
 
 	splitCharStream(strdup(tokens[1].c_str()), DELIM, delimCount, &tokens);		/* Based on kind retrieve other param list */
 	
 	std::string fromUser = tokens[0];
 	std::string toUser, message;
 
-	if(TYPE_FLAG == TYPE_QUERY){
-		addToConnectionTable(fromUser, fromSocket);								/* Add user socket pair to table */
-		
+	if(TYPE_FLAG == TYPE_NEW){
+		#ifdef __INFO__
+		std::cout<<"\""<<fromUser<<"\" new registration."<<std::endl;
+		#endif
+
+		int oldSock = getFromConnectionTable(fromUser);
+		std::string reply = "duplicate";
+		if(oldSock==-1){
+			addToConnectionTable(fromUser, fromSocket);								/* Add user socket pair to table */
+			reply = "registered";
+		}
+		#ifdef __INFO__
+		std::cout<<"\""<<fromUser<<"\" reg. status: "<<reply<<"."<<std::endl;
+		#endif
+		int s = send(fromSocket, reply.c_str(), reply.length(), 0);
+		if(s<0){
+			ERROR = E_SEND;
+			error_message = "Unable to send query reply.";
+
+			#ifdef __DEBUG__
+			std::cout<<error_message<<std::endl;
+			#endif
+		}	
+	}
+	else if(TYPE_FLAG == TYPE_QUERY){
 		#ifdef __INFO__
 		std::cout<<"\""<<fromUser<<"\" queried."<<std::endl;
 		#endif
 
 		std::string onlineList = getOnlineList(fromUser);
+
 		int s = send(fromSocket, onlineList.c_str(), onlineList.length(), 0);
 		if(s<0){
 			ERROR = E_SEND;
