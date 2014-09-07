@@ -201,7 +201,7 @@ int sendMessage(std::string toUser, std::string fromUser, std::string message){
 	bool onn = isOnline(toUser);
 	if(!onn){
 		ERROR = E_OFFLINE;
-		error_message = "User is not online.";
+		error_message = "offline";
 
 		#ifdef __DEBUG__
 		std::cout<<error_message<<std::endl;
@@ -215,7 +215,7 @@ int sendMessage(std::string toUser, std::string fromUser, std::string message){
 	int sbytes = send(targetSocket, message.c_str(), message.length(), 0);
 	if(sbytes<0){
 		ERROR = E_SEND;
-		error_message = "Error sending message.";
+		error_message = "e_send";
 
 		#ifdef __DEBUG__
 		std::cout<<error_message<<std::endl;
@@ -286,13 +286,13 @@ void processRequest(int fromSocket, char* stream){
 		toUser = tokens[1];
 		message = tokens[2];
 
-		/* Send message to desired target username */
-		int status = sendMessage(toUser, fromUser, message);
-		
 		#ifdef __INFO__
 		std::cout<<"\""<<fromUser<<"\" sending message to \""<<toUser<<"\"."<<std::endl;
 		#endif
-		
+
+		/* Send message to desired target username */
+		int status = sendMessage(toUser, fromUser, message);
+				
 		std::string reply = "SENT: "+toUser+" : ";
 		if(status==-1){
 			reply += error_message;
@@ -302,7 +302,7 @@ void processRequest(int fromSocket, char* stream){
 			#endif
 		}
 		else{
-			reply += "Message sent.";
+			reply += "success";
 
 			#ifdef __DEBUG__
 			std::cout<<"\""<<fromUser<<"\" sent a message to \""<<toUser<<"\"."<<std::endl;
