@@ -23,9 +23,17 @@
 
 #define DELIM ":"
 
+// flags returned by server for sent message request status
 #define SUCCESS "success"
+#define BSUCCESS "b_success"
 #define OFFLINE "offline"
 #define SEND_ERR "e_send"
+
+// flags for user input for actions
+#define EXIT "exit"
+#define WHO "who"
+#define HELP "help"
+
 
 extern std::string myname;
 extern int socketDescriptor;
