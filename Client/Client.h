@@ -1,6 +1,8 @@
 #ifndef _SERVER_H_
 #define _SERVER_H_
 
+//#define __DEBUG__
+
 #include <iostream>
 #include <string.h>
 #include <stdlib.h>
@@ -21,6 +23,9 @@
 
 #define DELIM ":"
 
+#define SUCCESS "success"
+#define OFFLINE "offline"
+#define SEND_ERR "e_send"
 
 extern std::string myname;
 extern int socketDescriptor;
@@ -46,5 +51,6 @@ void splitCharStream(char* stream, const char* delim, int count, std::vector<std
 void trim(std::string& s, const char tchar);
 
 void displayOnlineUsers(std::vector<std::string> &usersList);
+void giveInstructions();
 
 #endif
