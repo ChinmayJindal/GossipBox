@@ -20,28 +20,34 @@ int main(int argc, char **argv){
 	socketDescriptor = setupConnection(serverPort, serverIP);
 	if (socketDescriptor==-1)
 		return -1;
-	else
+	else{
 		#ifdef __DEBUG__
 		std::cout << "Connection to server established.\n";
 		#endif
+	}
 
-	sleep(1);
-	sendMessage(socketDescriptor, ("QUERY:"+myname).c_str());		// send username to server in format QUERY:username
+	sendMessage(socketDescriptor, ("NEW:"+myname).c_str());			// send username to server in format NEW:username
+	memset(buffer,0,MAX_BUF_SIZE);
+	while(receiveMessage(socketDescriptor, buffer) <= 0);			// Receive server's response	
+	
+	while(1){
+		if(std::string(buffer)=="duplicate"){
+			std::cout << "Oops..!! That name is already taken. Please provide another: ";
+			getline(std::cin, myname);
+			sendMessage(socketDescriptor, ("NEW:"+myname).c_str());
+			memset(buffer,0,MAX_BUF_SIZE);
+			while(receiveMessage(socketDescriptor, buffer) <= 0);			// Receive server's response	
+		}
+		else if(std::string(buffer)=="registered")
+			break;
+	}
 
 	#ifdef __DEBUG__
 	std::cout << "Registered name on server.\n";
 	#endif
 
-	while(receiveMessage(socketDescriptor, buffer) <= 0);			// Receive list of online clients from server	
 
-	#ifdef __DEBUG__
-	std::cout << "Received list of online clients from server\n";
-	#endif
-
-	splitCharStream(strdup(buffer), DELIM, -1, &usersList);			// Display list of users
-	displayOnlineUsers(usersList);
-
-	sleep(2);
+	sleep(1);
 
 	// giving instructions to user
 	std::cout << "Type 'help' for instructions\n";
