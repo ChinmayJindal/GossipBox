@@ -13,6 +13,11 @@ int setupSocket(int port){
 	if(sd<0){
 		ERROR = E_DESCRIPTOR;
 		error_message = "Error creating socket.";
+
+		#ifdef __DEBUG__
+		std::cout<<error_message<<std::endl;
+		#endif
+
 		return -1;
 	}
 
@@ -27,11 +32,18 @@ int setupSocket(int port){
 	}
 	servAddr.sin_port = htons(port);
 
+	/* Reuse the socket flag */
+	setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, (int*)1, sizeof(int));
 	/* Bind to local Port */
 	int b = bind(sd, (struct sockaddr *) &servAddr, sizeof(servAddr));
 	if(b<0){
 		ERROR = E_BIND;
 		error_message = "Error binding socket.";
+
+		#ifdef __DEBUG__
+		std::cout<<error_message<<std::endl;
+		#endif
+
 		return -1;
 	}
 
@@ -40,6 +52,11 @@ int setupSocket(int port){
 	if(l<0){
 		ERROR = E_LISTEN;
 		error_message = "Error setting listener.";
+
+		#ifdef __DEBUG__
+		std::cout<<error_message<<std::endl;
+		#endif
+
 		return -1;
 	}
 
@@ -83,6 +100,12 @@ void startServer(int port){
 		if(s<0){
 			ERROR = E_SELECT;
 			error_message = "Error using select.";
+
+			#ifdef __DEBUG__
+			std::cout<<error_message<<std::endl;
+			#endif
+
+			continue;
 		}
 
 		/* Search for data to read */
@@ -119,10 +142,17 @@ int acceptConnection(int serverSocket){
 	
 	if(newSd<0){
 		ERROR = E_ACCEPT;
-		error_message = "Failed connection accept.";
+		error_message = "Failed new connection accept.";		
+
+		#ifdef __DEBUG__
+		std::cout<<error_message<<std::endl;
+		#endif
+
 		return -1;
 	}
 	
+	#ifdef __INFO__
+
 	char remoteIP[INET_ADDRSTRLEN];
 	if(inet_ntop(AF_INET, &remoteAddr.sin_addr.s_addr, remoteIP, sizeof(remoteIP)) == NULL){
 		ERROR = E_IPADDR;
@@ -130,7 +160,9 @@ int acceptConnection(int serverSocket){
 		return -1;
 	}
 	int remotePort = ntohs(remoteAddr.sin_port);
-	std::cout<<"Connection accepted from: "<<remoteIP<<" : "<<remotePort<<std::endl;
+	std::cout<<"Connection accepted from: \""<<remoteIP<<"\" : "<<remotePort<<std::endl;
+
+	#endif
 
 	return newSd;
 }
@@ -157,13 +189,24 @@ int receiveData(int socketDescriptor,char* buffer){
 		std::cout<<nbytes<<std::endl;
 	}
 	*/
+
+	#ifdef __DEBUG__
+	std::cout<<"In receiveData: "<< buffer <<std::endl;
+	#endif
+
 	return nbytes;
 }
 
 int sendMessage(std::string toUser, std::string fromUser, std::string message){
-	if(isOnline(toUser)){
+	bool onn = isOnline(toUser);
+	if(!onn){
 		ERROR = E_OFFLINE;
-		error_message = toUser+": User is not online.";
+		error_message = "User is not online.";
+
+		#ifdef __DEBUG__
+		std::cout<<error_message<<std::endl;
+		#endif
+
 		return -1;
 	}
 	int targetSocket = getFromConnectionTable(toUser);
@@ -172,7 +215,12 @@ int sendMessage(std::string toUser, std::string fromUser, std::string message){
 	int sbytes = send(targetSocket, message.c_str(), message.length(), 0);
 	if(sbytes<0){
 		ERROR = E_SEND;
-		error_message = toUser+":Error sending message.";
+		error_message = "Error sending message.";
+
+		#ifdef __DEBUG__
+		std::cout<<error_message<<std::endl;
+		#endif
+
 		return -1;
 	}
 
@@ -188,7 +236,6 @@ int sendMessage(std::string toUser, std::string fromUser, std::string message){
  *						Response --> SENT: <to> : <statusMessage>
  *					
  *					/toclient/ RECV: <from> : <message>
- *					PING: <from>
  */
 void processRequest(int fromSocket, char* stream){
 	std::vector<std::string> tokens;
@@ -208,10 +255,6 @@ void processRequest(int fromSocket, char* stream){
 		TYPE_FLAG = TYPE_SEND;
 		delimCount = 2;
 	}
-	else if(reqType=="PING"){
-		TYPE_FLAG = TYPE_PING;
-		delimCount = -1;
-	}
 
 	if(TYPE_FLAG==-1)
 		return;
@@ -224,13 +267,19 @@ void processRequest(int fromSocket, char* stream){
 	if(TYPE_FLAG == TYPE_QUERY){
 		addToConnectionTable(fromUser, fromSocket);								/* Add user socket pair to table */
 		
-		std::cout<<fromUser<<" queried."<<std::endl;
+		#ifdef __INFO__
+		std::cout<<"\""<<fromUser<<"\" queried."<<std::endl;
+		#endif
 
 		std::string onlineList = getOnlineList(fromUser);
 		int s = send(fromSocket, onlineList.c_str(), onlineList.length(), 0);
 		if(s<0){
 			ERROR = E_SEND;
 			error_message = "Unable to send query reply.";
+
+			#ifdef __DEBUG__
+			std::cout<<error_message<<std::endl;
+			#endif
 		}
 	}
 	else if(TYPE_FLAG == TYPE_SEND){
@@ -239,21 +288,41 @@ void processRequest(int fromSocket, char* stream){
 
 		/* Send message to desired target username */
 		int status = sendMessage(toUser, fromUser, message);
+		
+		#ifdef __INFO__
+		std::cout<<"\""<<fromUser<<"\" sending message to \""<<toUser<<"\"."<<std::endl;
+		#endif
+		
 		std::string reply = "SENT: "+toUser+" : ";
 		if(status==-1){
 			reply += error_message;
+
+			#ifdef __DEBUG__
+			std::cout<<"\""<<fromUser<<"\" could not send a message to \""<<toUser<<"\". "<<std::endl;
+			#endif
+		}
+		else{
+			reply += "Message sent.";
+
+			#ifdef __DEBUG__
+			std::cout<<"\""<<fromUser<<"\" sent a message to \""<<toUser<<"\"."<<std::endl;
+			#endif
 		}
 		/* Report back to the sender */
 		int s = send(fromSocket, reply.c_str(), reply.length(), 0);
 		if(s<0){
 			ERROR = E_SEND;
 			error_message = "Unable to send message status.";
+
+			#ifdef __DEBUG__
+			std::cout<<error_message<<std::endl;
+			#endif
 		}
 	}
 }
 
 /*
- * Split routine, 'count' defines the number of delimiters to check
+ * Split routine, 'count' defines the number of delimiters to check (if -1 then no limit)
  */
 void splitCharStream(char* stream, const char* delim, int count, std::vector<std::string>* result){
 	(*result).clear();													/* Clear the result vector */
@@ -308,7 +377,11 @@ void removeFromConnectionTable(int socketDescriptor){
 	Connections::iterator it = conn.begin();
 	while(it!=conn.end()){
 		if(it->second == socketDescriptor){
-			std::cout<<it->first<<" went offline."<<std::endl;
+			
+			#ifdef __INFO__
+			std::cout<<"\""<<it->first<<"\" went offline."<<std::endl;
+			#endif
+
 			conn.erase(it);
 			break;
 		}
@@ -350,12 +423,5 @@ bool isOnline(std::string user){
 	int userSocket = getFromConnectionTable(user);
 	if(userSocket==-1)
 		return false;
-	/*
-	std::string ping = "PING";
-	int bytes = send(userSocket, ping.c_str(), ping.length(),0);
-	if(bytes<0){
-		return false;
-	}
-	*/
 	return true;
 }
