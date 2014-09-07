@@ -2,6 +2,10 @@
 #ifndef _SERVER_H_
 #define _SERVER_H_
 
+/* Debugging and information printing */
+//#define __DEBUG__
+#define __INFO__
+
 #include <unistd.h>
 #include <string.h>
 #include <algorithm>
@@ -36,7 +40,6 @@ extern int SERVER_SOCKET;
 
 #define TYPE_QUERY 100 					/* Define Type of message, querying */
 #define TYPE_SEND 101					/* Define Type of message, sending */
-#define TYPE_PING 102					/* Define Type of message, ping */
 
 /* Required parameters */
 #define PORT_DEFAULT 8080				/* Select default port */
