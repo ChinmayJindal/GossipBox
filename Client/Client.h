@@ -8,6 +8,8 @@
 #include <vector>
 #include <pthread.h>
 
+#include <stdint.h>
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -20,7 +22,7 @@
 #define DELIM ":"
 
 
-extern string myname;
+extern std::string myname;
 extern int socketDescriptor;
 extern std::vector<std::string> usersList;
 
@@ -37,8 +39,8 @@ int setupConnection(in_port_t serverPort, char* serverIP);
 void *Sender(void*);
 void *Receiver(void*);
 
-void sendMessage(int sockfd, char* data);
-void receiveMessage(int sockfd, char*buffer, int bufSize);
+int sendMessage(int sockfd, const char* data);
+int receiveMessage(int sockfd, char*buffer);
 
 void splitCharStream(char* stream, const char* delim, int count, std::vector<std::string>* result);
 void trim(std::string& s, const char tchar);
