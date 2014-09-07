@@ -1,8 +1,6 @@
 #include "Client.h"
 
-using namespace std;
-
-string myname;					// nickName of client
+std::string myname;					// nickName of client
 int socketDescriptor;
 std::vector<std::string> usersList;		// list of online users
 
@@ -13,6 +11,7 @@ std::string cmdInput;					// input from user (command line)
 std::vector<std::string> cmdTokens;		// cmd input split and stored in vector
 
 
+// returns socket descriptor otherwise -1
 int setupConnection(in_port_t serverPort, char* serverIP){
 	
 	// setup server address
@@ -25,9 +24,9 @@ int setupConnection(in_port_t serverPort, char* serverIP){
 	int res = inet_pton(AF_INET, serverIP, &serv_addr.sin_addr.s_addr);
 	if(res<=0){
 		if(res==0)
-			cout << "Invalid IP address !!" << endl;
+			std::cout << "Invalid IP address !!" << std::endl;
 		else
-			cout << "inet_pton() failed !!" << endl;
+			std::cout << "inet_pton() failed !!" << std::endl;
 	
 		return -1;
 	}
@@ -35,13 +34,13 @@ int setupConnection(in_port_t serverPort, char* serverIP){
 	// create a socket
 	int sd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sd < 0){
-		cout << "Error opening socket !!" << endl;
+		std::cout << "Error opening socket !!" << std::endl;
 		return -1;
 	}
 
 	// connect to server
 	if (connect(sd, (struct sockaddr *)&serv_addr ,sizeof(serv_addr)) <0){
-		cout << "connection to server failed !!" << endl;
+		std::cout << "connection to server failed !!" << std::endl;
 		return -1;
 	}
 	
@@ -55,8 +54,10 @@ void *Sender(void *threadargs){
 		trim(cmdInput, ' ');
 		if (cmdInput=="who")			// if user demands a list of online clients
 			sendMessage(socketDescriptor, ("QUERY:"+myname).c_str());
-		else if(cmdInput=="exit")
+		else if(cmdInput=="exit"){
+			std::cout << "Application is exiting..!!\n";
 			exit(0);
+		}
 		else{
 			splitCharStream(strdup(cmdInput.c_str()), DELIM, 1, &cmdTokens);
 			if (cmdTokens.size()==2)
@@ -71,13 +72,13 @@ void *Sender(void *threadargs){
 void *Receiver(void *threadargs){
 	while(1){
 
-		receiveMessage(socketDescriptor, buffer, MAX_BUF_SIZE);			// Receive list of online clients from server
+		receiveMessage(socketDescriptor, buffer);			// Receive list of online clients from server
 		if (strlen(buffer) > 0){	// if something received from server
 			splitCharStream(strdup(buffer), DELIM, 2, &bufferTokens);
 			if (bufferTokens[0]=="RECV")								// another client sent the message to client
 				std::cout << bufferTokens[1] << "said: " << bufferTokens[2] << std::endl;
 			else if(bufferTokens[0]=="ONLINE"){							// list of online clients received from server
-				splitCharStream(strlen(buffer), DELIM, -1, &usersList);
+				splitCharStream(buffer, DELIM, -1, &usersList);
 				displayOnlineUsers(usersList);
 			}
 			else if(bufferTokens[0]=="SENT")							// request status received from server
@@ -87,27 +88,32 @@ void *Receiver(void *threadargs){
 	pthread_exit(NULL);
 }
 
+int sendMessage(int sockfd, const char* data){
+	// final data stream to be sent
+	int sentLen = send(sockfd, data, strlen(data) ,0);
 
-void sendMessage(int sockfd, char* data){
-	ssize_t dataLen = strlen(data);
-	ssize_t sentLen = send(sockfd, data, dataLen, 0);
 	if (sentLen < 0){
-		cout << "Name sending failed !!" << endl;
-		exit(-1);
+		std::cout << "Name sending failed !!\n";
+		return -1;
 	}
-	else if(sentLen != dataLen){
-		cout << "send(): sent unexpected number of bytes" << endl;
-		exit(-1);
+	else if(sentLen != strlen(data)){
+		std::cout << "send(): sent unexpected number of bytes\n";
+		return 0;
 	}
+	
+	std::cout << sentLen << " characters Successfully sent\n";
+	return sentLen;
 }
 
 
-void receiveMessage(int sockfd, char*buffer, int bufSize){
-	ssize_t recvLen = recv(sockfd, buffer, bufSize-1, 0);
+int receiveMessage(int sockfd, char* buffer){
+
+	int recvLen = recv(sockfd, buffer, MAX_BUF_SIZE-1, 0);
 	if (recvLen < 0){
-		cout << "Receive Failed !!" << endl;
-		exit(-1);
+		std::cout << "Receive Failed !!" << std::endl;
+		return -1;
 	}
+	return recvLen;
 }
 
 /*
@@ -128,8 +134,9 @@ void splitCharStream(char* stream, const char* delim, int count, std::vector<std
 			--count;
 
 		subToken = std::string(token);
-		trim(subToken, ' ');											/* Trim leading and trailing spaces */
-		(*result).push_back(subToken);									/* Push into results */
+		trim(subToken, ' ');										/* Trim leading and trailing spaces */
+		if (subToken.length() >0)
+			(*result).push_back(subToken);									/* Push into results */
 
 		if(limitDelim && count<=0)										/* Get all of next of count exhausted */
 			token = strtok(NULL, "");
@@ -154,7 +161,11 @@ void trim(std::string& s, const char tchar){
 
 
 void displayOnlineUsers(std::vector<std::string> &usersList){
-	std::cout << "Following users are available now:\n";
-	for (unsigned int i=1; i<usersList.size(); ++i)
-		std::cout << usersList[i] << std::endl;
+	if (usersList.size()==1)
+		std::cout << "No one is online..!!\n";
+	else{
+		std::cout << "Following users are available now:\n";
+		for (unsigned int i=1; i<usersList.size(); ++i)
+			std::cout << usersList[i] << std::endl;
+	}
 }
