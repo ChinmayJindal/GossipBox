@@ -68,6 +68,8 @@ void *Sender(void *threadargs){
 			if (cmdTokens.size()==2){
 				if(cmdTokens[0]=="broadcast")
 					sendMessage(socketDescriptor, ("BCAST:"+myname+":"+cmdTokens[1]).c_str());
+				else if(cmdTokens[0]=="cname")
+					sendMessage(socketDescriptor, ("CHNAME:"+myname+":"+cmdTokens[1]).c_str());
 				else
 					sendMessage(socketDescriptor, ("SEND:"+myname+":"+cmdTokens[0]+":"+cmdTokens[1]).c_str());
 			}
@@ -92,6 +94,16 @@ void *Receiver(void *threadargs){
 				splitCharStream(strdup(buffer), DELIM, -1, &usersList);
 				displayOnlineUsers(usersList);
 			}
+			else if(bufferTokens[0]=="CHNAME"){							// name change request's response
+				if(bufferTokens[2] == "success"){
+					std::cout << "\tName successfully changed to " << bufferTokens[1] << std::endl;
+					myname=bufferTokens[1];
+				}
+				else if(bufferTokens[2] == "duplicate")
+					std::cout << "\tName change failed(\'" << bufferTokens[1] << "\' name already in use)" << std::endl;
+				else if(bufferTokens[2] == "fail")
+					std::cout << "\tName changing to " << bufferTokens[1] << "failed" << std::endl;
+			}
 			else if(bufferTokens[0]=="SENT"){							// request status received from server
 				if(bufferTokens[2] == SUCCESS)
 					std::cout << "\tMessage to "<<bufferTokens[1] << " successfully sent" << std::endl;
@@ -112,7 +124,6 @@ void *Receiver(void *threadargs){
 int sendMessage(int sockfd, const char* data){
 	// final data stream to be sent
 	int sentLen = send(sockfd, data, strlen(data) ,0);
-
 	if (sentLen < 0){
 		std::cout << "Sending to server failed !!\n";
 		return -1;
@@ -192,8 +203,9 @@ void giveInstructions(){
 	std::cout << "\n************************Instructions*******************************"<<std::endl;
 	std::cout << "\tTo send message, use this format => username:message" << std::endl;
 	std::cout << "\tTo broadcast message, use this format => broadcast:message" << std::endl;
-	std::cout << "\tTo query online users, enter" << WHO << std::endl;
-	std::cout << "\tTo end the connection, enter" << EXIT << std::endl;
+	std::cout << "\tTo query online users, enter " << WHO << std::endl;
+	std::cout << "\tTo end the connection, enter " << EXIT << std::endl;
+	std::cout << "\tTo change name, use this format => cname:new_name" << std::endl;
 	std::cout << "\tEnjoy Chatting." << std::endl;	
 	std::cout << "*********************************************************************\n"<<std::endl;	
 }
