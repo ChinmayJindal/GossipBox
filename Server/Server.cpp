@@ -363,7 +363,7 @@ void processRequest(int fromSocket, char* stream){
 
 		std::string bcast = "RECV:"+fromUser+":"+message;
 		#ifdef __INFO__
-		std::cout<<"Broadcast from \""+fromUser+"\" : "<<bcast<<std::endl;
+		std::cout<<"Broadcast from \""+fromUser+"\" : "<<message<<std::endl;
 		#endif
 
 		int status;
