@@ -233,6 +233,8 @@ int sendMessage(std::string toUser, std::string fromUser, std::string message){
  * Types of messages and their responses are:
  *					NEW: <from>
  *						Response --> NEW: <status>
+ *					CHNAME: <old> : <new>
+ *						Response --> CHNAME: <status>
  * 					QUERY: <from>
  *						Response --> ONLINE: <user1> : <user2> : <user3> : ....
  *					SEND: <from> : <to> : <message>
@@ -251,7 +253,11 @@ void processRequest(int fromSocket, char* stream){
 	std::string reqType = tokens[0];
 
 	int TYPE_FLAG = -1, delimCount=-1;
-	if(reqType=="NEW"){
+	if(reqType=="CHNAME"){
+		TYPE_FLAG = TYPE_CHNAME;
+		delimCount = 1;
+	}
+	else if(reqType=="NEW"){
 		TYPE_FLAG = TYPE_NEW;
 		delimCount = 0;
 	}
@@ -279,8 +285,39 @@ void processRequest(int fromSocket, char* stream){
 	
 	std::string fromUser = tokens[0];
 	std::string toUser, message;
+	if(TYPE_FLAG == TYPE_CHNAME){
+		toUser = tokens[1];
+		#ifdef __INFO__
+		std::cout<<"\""<<fromUser<<"\" changing name to \""<<toUser<<"\"."<<std::endl;
+		#endif
 
-	if(TYPE_FLAG == TYPE_NEW){
+		int curSock = getFromConnectionTable(fromUser);
+		std::string reply = "CHNAME:"+toUser+":";
+		if(curSock==-1){
+			reply += "fail";
+		}
+		else{
+			curSock = getFromConnectionTable(toUser);
+			if(curSock==-1){
+				removeFromConnectionTable(fromSocket);
+				addToConnectionTable(toUser, fromSocket);
+				reply += "success";
+			}
+			else{
+				reply += "duplicate";
+			}
+		}
+		int s = send(fromSocket, reply.c_str(), reply.length(), 0);
+		if(s<0){
+			ERROR = E_SEND;
+			error_message = "Unable to send query reply.";
+
+			#ifdef __DEBUG__
+			std::cout<<error_message<<std::endl;
+			#endif
+		}	
+	}
+	else if(TYPE_FLAG == TYPE_NEW){
 		#ifdef __INFO__
 		std::cout<<"\""<<fromUser<<"\" new registration."<<std::endl;
 		#endif
@@ -437,6 +474,9 @@ void addToConnectionTable(std::string username, int socketDescriptor){
 	if(!retVal.second){
 		retVal.first->second = socketDescriptor;
 	}
+	#ifdef __INFO__
+	std::cout<<"New user \""<<username<<"\" on socket "<<socketDescriptor<<"."<<std::endl;
+	#endif
 }
 
 void removeFromConnectionTable(int socketDescriptor){
@@ -446,7 +486,7 @@ void removeFromConnectionTable(int socketDescriptor){
 		if(it->second == socketDescriptor){
 			
 			#ifdef __INFO__
-			std::cout<<"\""<<it->first<<"\" went offline."<<std::endl;
+			std::cout<<"\""<<it->first<<"\" went offline on socket "<<socketDescriptor<<"."<<std::endl;
 			#endif
 
 			conn.erase(it);
