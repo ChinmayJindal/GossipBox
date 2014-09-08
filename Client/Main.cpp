@@ -50,7 +50,7 @@ int main(int argc, char **argv){
 	sleep(1);
 
 	// giving instructions to user
-	std::cout << "Type 'help' for instructions\n";
+	std::cout << "Connection successful. Type 'help' for instructions\n";
 
 	#ifdef __DEBUG__
 	std::cout << "Creating the threads\n";

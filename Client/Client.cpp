@@ -111,7 +111,7 @@ void *Receiver(void *threadargs){
 					std::cout << "\tMessage to "<<bufferTokens[1] << " not sent (User Offline)" << std::endl;
 				else if(bufferTokens[2] == SEND_ERR)
 					std::cout << "\tMessage to "<<bufferTokens[1] << " failed" << std::endl;
-				else if (bufferTokens[2] == BSUCCESS)
+				else if(bufferTokens[2] == BSUCCESS)
 					std::cout << "\tBroadcast Successful" << std::endl;
 			}
 			std::cout << "***********************************************************************" << std::endl;
@@ -128,7 +128,7 @@ int sendMessage(int sockfd, const char* data){
 		std::cout << "Sending to server failed !!\n";
 		return -1;
 	}
-	else if(sentLen != strlen(data)){
+	else if(sentLen != (int)strlen(data)){
 		std::cout << "send(): sent unexpected number of bytes\n";
 		return 0;
 	}
