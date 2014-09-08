@@ -47,6 +47,24 @@ int setupConnection(in_port_t serverPort, char* serverIP){
 	return sd;
 }
 
+/*
+ * Data sending and receiving protocols
+ * Types of messages and their responses are:
+ *					NEW: <from>
+ *						Response --> NEW: <status>
+ *					CHNAME: <old> : <new>
+ *						Response --> CHNAME: <status>
+ * 					QUERY: <from>
+ *						Response --> ONLINE: <user1> : <user2> : <user3> : ....
+ *					SEND: <from> : <to> : <message>
+ *						Response --> SENT: <to> : <statusMessage>
+ *					BCAST: <from> : <message>
+ *						Response --> SENT: <from> : <status>
+ *					
+ *					/toclient/ RECV: <from> : <message>
+ */
+
+
 // thread which sends user requests to server in a special packaged format
 void *Sender(void *threadargs){
 	while(1)
