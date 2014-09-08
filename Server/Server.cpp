@@ -240,6 +240,7 @@ int sendMessage(std::string toUser, std::string fromUser, std::string message){
  *					SEND: <from> : <to> : <message>
  *						Response --> SENT: <to> : <statusMessage>
  *					BCAST: <from> : <message>
+ *						Response --> SENT: <from> : <status>
  *					
  *					/toclient/ RECV: <from> : <message>
  */
@@ -411,7 +412,7 @@ void processRequest(int fromSocket, char* stream){
 			}
 			++it;
 		}
-		std::string reply = "b_success";
+		std::string reply = "SENT:"+fromUser+":b_success";
 		/* Report back to the broadcaster */
 		int s = send(fromSocket, reply.c_str(), reply.length(), 0);
 		if(s<0){
