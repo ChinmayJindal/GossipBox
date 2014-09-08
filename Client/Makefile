@@ -7,7 +7,6 @@ THREAD=-lpthread
 
 $(TARGET): Main.o Client.o
 	@$(CC) $(CFLAGS) -o $@ $^ $(THREAD)
-	@echo "Use 'make run' to execute"
 
 Main.o: Main.cpp Client.h
 	@$(CC) $(CFLAGS) $(THREAD) -c Main.cpp
